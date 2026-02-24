@@ -33,13 +33,6 @@ services:
       - ollama-data:/root/.ollama
     networks:
       - nextmark-net
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
   backend:
     build:
