@@ -124,22 +124,48 @@ CREATE TABLE feedback (
 );
 
 CREATE TABLE notification (
-    id INT PRIMARY KEY,
-    user_account_id INT,
+    notification_id TEXT PRIMARY KEY,
+    id_users TEXT NOT NULL,
+    flag_id TEXT NULL,
     message TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_account_id) REFERENCES users_account(id)
+    read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_notification_user
+        FOREIGN KEY (id_users)
+        REFERENCES users_account(id_users),
+    CONSTRAINT fk_notification_flag
+        FOREIGN KEY (flag_id)
+        REFERENCES flag(flag_id)
 );
 
 CREATE TABLE system_log (
-    id INT PRIMARY KEY,
-    action VARCHAR(255) NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    log_id TEXT PRIMARY KEY,
+    submission_id TEXT NULL,
+    id_users TEXT NULL,
+    test_case_id TEXT NULL,
+    log_type TEXT NOT NULL,
+    details JSONB NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_system_log_submission
+        FOREIGN KEY (submission_id)
+        REFERENCES submission(submission_id),
+    CONSTRAINT fk_system_log_user
+        FOREIGN KEY (id_users)
+        REFERENCES users_account(id_users),
+    CONSTRAINT fk_system_log_test_case
+        FOREIGN KEY (test_case_id)
+        REFERENCES test_case(test_case_id)
 );
 
 CREATE TABLE audit_history (
-    id INT PRIMARY KEY,
-    table_name VARCHAR(255) NOT NULL,
-    action VARCHAR(50) NOT NULL,
-    changed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    history_id TEXT PRIMARY KEY,
+    actor_id TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    state_snapshot JSONB NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_audit_history_actor
+        FOREIGN KEY (actor_id)
+        REFERENCES users_account(id_users)
 );
+
