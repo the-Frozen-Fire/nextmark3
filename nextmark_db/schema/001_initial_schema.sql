@@ -1,81 +1,126 @@
 CREATE TABLE users_account (
-    id INT PRIMARY KEY,
-    username VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    id_users TEXT PRIMARY KEY,
+    position_users TEXT NOT NULL CHECK (position_users IN ('student', 'faculty', 'admin', 'ta')),
+    email_users TEXT NOT NULL UNIQUE,
+    encryptedpassword_users TEXT NOT NULL,
+    ferpa_consent BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE course (
-    id INT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    course_id TEXT PRIMARY KEY,
+    faculty_id TEXT NOT NULL,
+    course_code TEXT NOT NULL,
+    semester TEXT NOT NULL,
+    CONSTRAINT fk_course_faculty
+        FOREIGN KEY (faculty_id)
+        REFERENCES users_account(id_users)
 );
 
 CREATE TABLE rubric_template (
-    id INT PRIMARY KEY,
-    course_id INT,
-    template_name VARCHAR(255) NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (course_id) REFERENCES course(id)
+    template_id TEXT PRIMARY KEY,
+    version INTEGER NOT NULL,
+    line_items JSONB NOT NULL,
+    total_points INTEGER NOT NULL
 );
 
 CREATE TABLE assignment_rubric (
-    id INT PRIMARY KEY,
-    rubric_template_id INT,
-    criteria VARCHAR(255) NOT NULL,
-    points INT NOT NULL,
-    FOREIGN KEY (rubric_template_id) REFERENCES rubric_template(id)
+    rubric_version_id TEXT PRIMARY KEY,
+    template_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_assignment_rubric_template
+        FOREIGN KEY (template_id)
+        REFERENCES rubric_template(template_id)
 );
 
 CREATE TABLE assignment (
-    id INT PRIMARY KEY,
-    course_id INT,
-    title VARCHAR(255) NOT NULL,
-    due_date DATETIME,
-    FOREIGN KEY (course_id) REFERENCES course(id)
+    assignment_id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL,
+    rubric_version_id TEXT NOT NULL,
+    code_language TEXT NOT NULL,
+    due_date DATE NOT NULL,
+    CONSTRAINT fk_assignment_course
+        FOREIGN KEY (course_id)
+        REFERENCES course(course_id),
+    CONSTRAINT fk_assignment_rubric
+        FOREIGN KEY (rubric_version_id)
+        REFERENCES assignment_rubric(rubric_version_id)
 );
 
 CREATE TABLE test_case (
-    id INT PRIMARY KEY,
-    assignment_id INT,
+    test_case_id TEXT PRIMARY KEY,
+    assignment_id TEXT NOT NULL,
     input_data TEXT NOT NULL,
     expected_output TEXT NOT NULL,
-    FOREIGN KEY (assignment_id) REFERENCES assignment(id)
+    timeout_seconds INTEGER NOT NULL DEFAULT 5,
+    CONSTRAINT fk_test_case_assignment
+        FOREIGN KEY (assignment_id)
+        REFERENCES assignment(assignment_id)
 );
 
 CREATE TABLE submission (
-    id INT PRIMARY KEY,
-    assignment_id INT,
-    user_account_id INT,
-    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (assignment_id) REFERENCES assignment(id),
-    FOREIGN KEY (user_account_id) REFERENCES users_account(id)
+    submission_id TEXT PRIMARY KEY,
+    assignment_id TEXT NOT NULL,
+    student_id TEXT NOT NULL,
+    submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    encrypted_file_paths JSONB NOT NULL,
+    CONSTRAINT fk_submission_assignment
+        FOREIGN KEY (assignment_id)
+        REFERENCES assignment(assignment_id),
+    CONSTRAINT fk_submission_student
+        FOREIGN KEY (student_id)
+        REFERENCES users_account(id_users)
 );
 
 CREATE TABLE grading_result (
-    id INT PRIMARY KEY,
-    submission_id INT,
-    score INT NOT NULL,
-    feedback TEXT,
-    FOREIGN KEY (submission_id) REFERENCES submission(id)
+    result_id TEXT PRIMARY KEY,
+    submission_id TEXT NOT NULL UNIQUE,
+    total_points_earned NUMERIC(10,2) NOT NULL,
+    rubric_scores JSONB NOT NULL,
+    faculty_reviewed BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT fk_grading_result_submission
+        FOREIGN KEY (submission_id)
+        REFERENCES submission(submission_id)
 );
 
 CREATE TABLE flag (
-    id INT PRIMARY KEY,
-    submission_id INT,
-    reason VARCHAR(255) NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (submission_id) REFERENCES submission(id)
+    flag_id TEXT PRIMARY KEY,
+    submission_id TEXT NOT NULL,
+    test_case_id TEXT NULL,
+    resolved_by TEXT NULL,
+    source_type TEXT NOT NULL,
+    issue_type TEXT NOT NULL,
+    description TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    resolved_at TIMESTAMPTZ NULL,
+    response_text TEXT NULL,
+    CONSTRAINT fk_flag_submission
+        FOREIGN KEY (submission_id)
+        REFERENCES submission(submission_id),
+    CONSTRAINT fk_flag_test_case
+        FOREIGN KEY (test_case_id)
+        REFERENCES test_case(test_case_id),
+    CONSTRAINT fk_flag_resolved_by
+        FOREIGN KEY (resolved_by)
+        REFERENCES users_account(id_users)
 );
 
 CREATE TABLE feedback (
-    id INT PRIMARY KEY,
-    submission_id INT,
-    comment TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (submission_id) REFERENCES submission(id)
+    feedback_id TEXT PRIMARY KEY,
+    submission_id TEXT NOT NULL,
+    author_id TEXT NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('auto', 'manual')),
+    rubric_item_id TEXT NULL,
+    message_text TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_feedback_submission
+        FOREIGN KEY (submission_id)
+        REFERENCES submission(submission_id),
+    CONSTRAINT fk_feedback_author
+        FOREIGN KEY (author_id)
+        REFERENCES users_account(id_users)
 );
 
 CREATE TABLE notification (
