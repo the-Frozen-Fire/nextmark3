@@ -33,6 +33,13 @@ services:
       - ollama-data:/root/.ollama
     networks:
       - nextmark-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
   backend:
     build:
@@ -51,6 +58,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      ollama:
+        condition: service_started
 
   nginx:
     image: nginx:stable-alpine
@@ -63,8 +72,8 @@ services:
       - ./frontend/build:/usr/share/nginx/html:ro
     networks:
       - nextmark-net
-    #depends_on:
-    #  - backend
+    depends_on:
+      - backend
 
 networks:
   nextmark-net:
