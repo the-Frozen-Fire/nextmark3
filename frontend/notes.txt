@@ -1,1 +1,0 @@
-Jetson Orin Nano 8GB model
